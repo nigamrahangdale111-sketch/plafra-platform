@@ -4,28 +4,57 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PLAFRA — Your Creative Service Partner</title>
+  <title>PLAFRA — Creative Operations Portal</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; min-height: 100vh; }
-    header { background: #1e293b; border-bottom: 1px solid #334155; padding: 1.25rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-    .brand { font-size: 1.5rem; font-weight: 800; color: #38bdf8; letter-spacing: -0.5px; }
-    .tagline { font-size: 0.875rem; color: #94a3b8; }
-    main { flex: 1; max-width: 480px; margin: 3rem auto; padding: 1rem; width: 100%; }
+    body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: #1e293b; border-bottom: 1px solid #334155; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .brand { font-size: 1.4rem; font-weight: 800; color: #38bdf8; letter-spacing: -0.5px; }
+    .nav-actions { display: flex; align-items: center; gap: 1rem; }
+    .nav-email { font-size: 0.85rem; color: #94a3b8; }
+    .btn-logout { background: #334155; color: #f8fafc; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+    .btn-logout:hover { background: #475569; }
+
+    main { flex: 1; max-width: 900px; margin: 2rem auto; padding: 1rem; width: 100%; }
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
-    h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: #f8fafc; text-align: center; }
-    p.sub { font-size: 0.875rem; color: #94a3b8; margin-bottom: 1.5rem; text-align: center; }
+    h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem; color: #f8fafc; }
+    p.sub { font-size: 0.875rem; color: #94a3b8; margin-bottom: 1.5rem; }
+
+    /* Auth styles */
+    .auth-container { max-width: 440px; margin: 2rem auto; }
     .form-group { margin-bottom: 1rem; }
-    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.35rem; color: #cbd5e1; }
-    input { width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; font-size: 1rem; background: #0f172a; color: #fff; }
-    input:focus { outline: none; border-color: #38bdf8; }
-    .btn { width: 100%; background: #2563eb; color: #ffffff; font-weight: 600; padding: 0.75rem; border-radius: 6px; border: none; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
-    .btn:disabled { background: #64748b; cursor: not-allowed; }
-    .btn-secondary { background: #334155; color: #f8fafc; margin-top: 1rem; }
-    .toggle-text { font-size: 0.875rem; text-align: center; margin-top: 1.25rem; color: #94a3b8; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; color: #cbd5e1; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #475569; border-radius: 6px; font-size: 0.95rem; background: #0f172a; color: #fff; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #38bdf8; }
+    .btn-primary { width: 100%; background: #2563eb; color: #ffffff; font-weight: 600; padding: 0.75rem; border-radius: 6px; border: none; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary:disabled { background: #64748b; cursor: not-allowed; }
+    .toggle-text { font-size: 0.85rem; text-align: center; margin-top: 1.25rem; color: #94a3b8; }
     .toggle-text span { color: #38bdf8; font-weight: 600; cursor: pointer; text-decoration: underline; }
-    #status-msg { margin-top: 1rem; font-size: 0.875rem; padding: 0.75rem; border-radius: 6px; display: none; text-align: center; }
+
+    /* Dashboard Layout */
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .btn-new { background: #2563eb; color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .btn-new:hover { background: #1d4ed8; }
+
+    /* Request Form Modal / Card */
+    #request-form-section { display: none; background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* Request Items */
+    .request-list { display: flex; flex-direction: column; gap: 1rem; }
+    .request-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.25rem; display: flex; justify-content: space-between; align-items: flex-start; }
+    .req-title { font-size: 1.1rem; font-weight: 600; color: #f8fafc; margin-bottom: 0.25rem; }
+    .req-meta { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem; }
+    .req-desc { font-size: 0.875rem; color: #cbd5e1; line-height: 1.4; }
+    .status-badge { font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: 9999px; text-transform: uppercase; }
+    .badge-Queued { background: #334155; color: #94a3b8; }
+    .badge-InProgress { background: #1e3a8a; color: #93c5fd; }
+    .badge-Delivered { background: #064e3b; color: #6ee7b7; }
+
+    #status-msg { margin-top: 1rem; font-size: 0.875rem; padding: 0.75rem; border-radius: 6px; display: none; text-align: center; font-weight: 500; }
     .success { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; display: block !important; }
     .error { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; display: block !important; }
     #dashboard-view { display: none; }
@@ -34,28 +63,32 @@
 <body>
   <header>
     <div class="brand">PLAFRA</div>
-    <div class="tagline">Your Creative Service Partner</div>
+    <div class="nav-actions" id="user-nav" style="display: none;">
+      <span class="nav-email" id="user-email-display"></span>
+      <button class="btn-logout" onclick="signOut()">Sign Out</button>
+    </div>
   </header>
 
   <main>
-    <div class="card" id="auth-view">
+    <!-- Auth View -->
+    <div class="card auth-container" id="auth-view">
       <h2 id="auth-title">Create an Account</h2>
       <p class="sub" id="auth-sub">Access your creative portal and service requests</p>
 
-      <form id="auth-form" onsubmit="event.preventDefault(); handleAuthSubmit();">
+      <form id="auth-form" autocomplete="off" onsubmit="event.preventDefault(); handleAuthSubmit();">
         <div class="form-group" id="name-group">
           <label for="fullName">Full Name</label>
-          <input type="text" id="fullName" placeholder="Your Name" />
+          <input type="text" id="fullName" placeholder="Your Name" autocomplete="off" />
         </div>
         <div class="form-group">
           <label for="email">Email Address</label>
-          <input type="email" id="email" placeholder="name@example.com" required />
+          <input type="email" id="email" placeholder="name@example.com" required autocomplete="off" />
         </div>
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" placeholder="At least 6 characters" required minlength="6" />
+          <input type="password" id="password" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password" />
         </div>
-        <button type="submit" class="btn" id="submit-btn">Sign Up</button>
+        <button type="submit" class="btn-primary" id="submit-btn">Sign Up</button>
       </form>
 
       <div class="toggle-text">
@@ -65,14 +98,51 @@
       <div id="status-msg"></div>
     </div>
 
+    <!-- Client Dashboard View -->
     <div class="card" id="dashboard-view">
-      <h2>Client Portal</h2>
-      <p class="sub" id="user-display">Logged in</p>
-      <div style="background: #0f172a; border: 1px dashed #475569; border-radius: 8px; padding: 1.5rem; text-align: center; margin-bottom: 1rem;">
-        <p style="font-weight: 600; color: #f8fafc;">No active requests yet</p>
-        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.35rem;">Your creative drafts and project deliverables will appear here.</p>
+      <div class="dashboard-header">
+        <div>
+          <h2>Creative Requests</h2>
+          <p class="sub" style="margin-bottom: 0;">Submit project specifications and review assets</p>
+        </div>
+        <button class="btn-new" onclick="toggleRequestForm()">+ New Request</button>
       </div>
-      <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
+
+      <!-- New Request Form Drawer -->
+      <div id="request-form-section">
+        <h3 style="font-size: 1.1rem; margin-bottom: 1rem; color: #38bdf8;">Submit Project Request</h3>
+        <form id="request-form" onsubmit="event.preventDefault(); createRequest();">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="projectTitle">Project Title</label>
+              <input type="text" id="projectTitle" placeholder="e.g. Brand Identity Kit, Poster Series" required />
+            </div>
+            <div class="form-group">
+              <label for="serviceType">Service Category</label>
+              <select id="serviceType" required>
+                <option value="Brand Identity">Brand Identity & Logo Design</option>
+                <option value="Social Media Graphics">Social Media Graphics & Banners</option>
+                <option value="Packaging & Print">Packaging & Print Collateral</option>
+                <option value="UI/Web Design">UI / Landing Page Visuals</option>
+                <option value="Other Creative">Custom Creative Project</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="description">Creative Brief & Requirements</label>
+            <textarea id="description" rows="3" placeholder="Describe your brand style, target audience, color preferences, or reference links..." required></textarea>
+          </div>
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+            <button type="button" class="btn-logout" onclick="toggleRequestForm()">Cancel</button>
+            <button type="submit" class="btn-new" id="submit-req-btn">Submit Request</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Request List -->
+      <div id="requests-container" class="request-list">
+        <div style="text-align: center; color: #94a3b8; padding: 2rem;">Loading your creative requests...</div>
+      </div>
     </div>
   </main>
 
@@ -82,6 +152,7 @@
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let isSignUp = true;
+    let currentUser = null;
 
     function toggleAuthMode() {
       isSignUp = !isSignUp;
@@ -108,25 +179,26 @@
     }
 
     async function checkUser() {
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-          showDashboard(session.user);
-        }
-      } catch (err) {
-        console.error("Session check error:", err);
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        setupDashboard(session.user);
       }
     }
 
-    function showDashboard(user) {
+    function setupDashboard(user) {
+      currentUser = user;
       document.getElementById('auth-view').style.display = 'none';
       document.getElementById('dashboard-view').style.display = 'block';
-      document.getElementById('user-display').innerText = `Logged in as: ${user.email}`;
+      document.getElementById('user-nav').style.display = 'flex';
+      document.getElementById('user-email-display').innerText = user.email;
+      loadRequests();
     }
 
     async function signOut() {
       await supabaseClient.auth.signOut();
+      currentUser = null;
       document.getElementById('dashboard-view').style.display = 'none';
+      document.getElementById('user-nav').style.display = 'none';
       document.getElementById('auth-view').style.display = 'block';
       clearMessage();
     }
@@ -138,15 +210,7 @@
       const fullName = document.getElementById('fullName').value.trim();
       const btn = document.getElementById('submit-btn');
 
-      if (!email || !password) {
-        showMessage("Please enter both email and password.", true);
-        return;
-      }
-
-      if (password.length < 6) {
-        showMessage("Password must be at least 6 characters.", true);
-        return;
-      }
+      if (!email || !password) return;
 
       btn.disabled = true;
       btn.innerText = "Processing...";
@@ -154,48 +218,114 @@
       try {
         if (isSignUp) {
           const { data, error } = await supabaseClient.auth.signUp({
-            email: email,
-            password: password,
-            options: {
-              data: { full_name: fullName }
-            }
+            email,
+            password,
+            options: { data: { full_name: fullName } }
           });
-
           if (error) {
             showMessage(error.message, true);
           } else if (data?.user) {
-            if (data.session) {
-              showDashboard(data.user);
-            } else {
-              showMessage("Sign-up registered! You can now switch to Sign In.", false);
-            }
+            setupDashboard(data.user);
           }
         } else {
-          const { data, error } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-          });
-
+          const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
           if (error) {
             showMessage(error.message, true);
           } else if (data?.user) {
-            showDashboard(data.user);
+            setupDashboard(data.user);
           }
         }
       } catch (err) {
-        showMessage("Network error: " + err.message, true);
+        showMessage("Error: " + err.message, true);
       } finally {
         btn.disabled = false;
         btn.innerText = isSignUp ? "Sign Up" : "Sign In";
       }
     }
 
+    function toggleRequestForm() {
+      const section = document.getElementById('request-form-section');
+      section.style.display = section.style.display === 'block' ? 'none' : 'block';
+    }
+
+    async function loadRequests() {
+      const container = document.getElementById('requests-container');
+      const { data, error } = await supabaseClient
+        .from('creative_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        container.innerHTML = `<div style="color: #fca5a5; padding: 1rem;">Failed to load requests: ${error.message}</div>`;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = `
+          <div style="background: #0f172a; border: 1px dashed #475569; border-radius: 8px; padding: 2rem; text-align: center;">
+            <p style="font-weight: 600; color: #f8fafc;">No active requests yet</p>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.25rem;">Click "+ New Request" above to submit your first creative brief.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = data.map(req => `
+        <div class="request-item">
+          <div>
+            <div class="req-title">${escapeHtml(req.project_title)}</div>
+            <div class="req-meta">${escapeHtml(req.service_type)} • Submitted ${new Date(req.created_at).toLocaleDateString()}</div>
+            <div class="req-desc">${escapeHtml(req.description || 'No brief provided.')}</div>
+          </div>
+          <span class="status-badge badge-${(req.status || 'Queued').replace(/\s+/g, '')}">${escapeHtml(req.status || 'Queued')}</span>
+        </div>
+      `).join('');
+    }
+
+    async function createRequest() {
+      const btn = document.getElementById('submit-req-btn');
+      const title = document.getElementById('projectTitle').value.trim();
+      const serviceType = document.getElementById('serviceType').value;
+      const desc = document.getElementById('description').value.trim();
+
+      if (!title || !desc) return;
+
+      btn.disabled = true;
+      btn.innerText = "Submitting...";
+
+      const { error } = await supabaseClient
+        .from('creative_requests')
+        .insert([{
+          user_id: currentUser.id,
+          client_email: currentUser.email,
+          project_title: title,
+          service_type: serviceType,
+          description: desc,
+          status: 'Queued'
+        }]);
+
+      btn.disabled = false;
+      btn.innerText = "Submit Request";
+
+      if (error) {
+        alert("Error saving request: " + error.message);
+      } else {
+        document.getElementById('project-form')?.reset();
+        document.getElementById('projectTitle').value = '';
+        document.getElementById('description').value = '';
+        toggleRequestForm();
+        loadRequests();
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.innerText = str;
+      return div.innerHTML;
+    }
+
     checkUser();
   </script>
 </body>
 </html>
-
-
-
-
 
