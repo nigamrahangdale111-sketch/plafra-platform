@@ -5,17 +5,32 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PLAFRA — Your Creative Service Partner</title>
+  <!-- Supabase JS Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f8fafc; color: #0f172a; display: flex; flex-direction: column; min-height: 100vh; }
-    header { background: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    header { background: #ffffff; border-bottom: 1px solid #e2e8f0; padding: 1.25rem 2rem; display: flex; justify-content: space-between; align-items: center; }
     .brand { font-size: 1.5rem; font-weight: 800; color: #1d4ed8; letter-spacing: -0.5px; }
-    .tagline { font-size: 0.875rem; color: #64748b; }
-    main { flex: 1; max-width: 800px; margin: 0 auto; padding: 3rem 1.5rem; text-align: center; }
-    h1 { font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-bottom: 1rem; line-height: 1.2; }
-    p.lead { font-size: 1.125rem; color: #475569; margin-bottom: 2rem; }
+    .tagline { font-size: 0.875rem; color: #64748b; font-weight: 500; }
+    main { flex: 1; max-width: 480px; margin: 3rem auto; padding: 1rem; width: 100%; }
     .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-    .btn { display: inline-block; background: #2563eb; color: #ffffff; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; margin-top: 1rem; }
+    h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; color: #0f172a; text-align: center; }
+    p.sub { font-size: 0.875rem; color: #64748b; margin-bottom: 1.5rem; text-align: center; }
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.35rem; color: #334155; }
+    input { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s; }
+    input:focus { outline: none; border-color: #2563eb; ring: 2px solid #2563eb; }
+    .btn { width: 100%; background: #2563eb; color: #ffffff; font-weight: 600; padding: 0.75rem; border-radius: 6px; border: none; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; transition: background 0.2s; }
+    .btn:hover { background: #1d4ed8; }
+    .btn-secondary { background: #f1f5f9; color: #334155; margin-top: 1rem; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .toggle-text { font-size: 0.875rem; text-align: center; margin-top: 1.25rem; color: #64748b; }
+    .toggle-text span { color: #2563eb; font-weight: 600; cursor: pointer; text-decoration: underline; }
+    #message { margin-top: 1rem; font-size: 0.875rem; padding: 0.75rem; border-radius: 6px; display: none; text-align: center; line-height: 1.4; }
+    .success { background: #dcfce7; color: #166534; display: block !important; border: 1px solid #bbf7d0; }
+    .error { background: #fee2e2; color: #991b1b; display: block !important; border: 1px solid #fecaca; }
+    #dashboard-view { display: none; }
   </style>
 </head>
 <body>
@@ -23,15 +38,143 @@
     <div class="brand">PLAFRA</div>
     <div class="tagline">Your Creative Service Partner</div>
   </header>
+
   <main>
-    <h1>Structured Creative Services</h1>
-    <p class="lead">Promotional creative materials, templates, and banners delivered through one organized workflow.</p>
-    <div class="card">
-      <h2>Platform Launching Soon</h2>
-      <p style="margin-top: 0.5rem; color: #64748b;">We are currently setting up client portal onboarding.</p>
-      <a href="mailto:contact@plafra.com" class="btn">Get in Touch</a>
+    <!-- Authentication Card -->
+    <div class="card" id="auth-view">
+      <h2 id="auth-title">Create an Account</h2>
+      <p class="sub" id="auth-sub">Access your creative portal and service requests</p>
+
+      <form id="auth-form">
+        <div class="form-group" id="name-group">
+          <label for="fullName">Full Name</label>
+          <input type="text" id="fullName" placeholder="Your Name" />
+        </div>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="name@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="At least 6 characters" required minlength="6" />
+        </div>
+        <button type="submit" class="btn" id="submit-btn">Sign Up</button>
+      </form>
+
+      <div class="toggle-text">
+        <span id="toggle-auth" onclick="toggleAuthMode()">Already have an account? Sign In</span>
+      </div>
+
+      <div id="message"></div>
+    </div>
+
+    <!-- Client Portal View (Shown upon successful login) -->
+    <div class="card" id="dashboard-view">
+      <h2>Client Portal</h2>
+      <p class="sub" id="user-display">Logged in</p>
+      
+      <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 1.5rem; text-align: center; margin-bottom: 1rem;">
+        <p style="font-weight: 600; color: #0f172a;">No active requests yet</p>
+        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0.35rem;">Your promotional creative drafts, review links, and final assets will be listed here.</p>
+      </div>
+
+      <button class="btn btn-secondary" onclick="signOut()">Sign Out</button>
     </div>
   </main>
+
+  <script>
+    // Configured Supabase Credentials
+    const SUPABASE_URL = "https://tphghcbttgibegrnqijx.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_8YOgpGeB_dieXVq3x4gGKQ_kiwVcxIt";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let isSignUp = true;
+
+    function toggleAuthMode() {
+      isSignUp = !isSignUp;
+      document.getElementById('auth-title').innerText = isSignUp ? "Create an Account" : "Welcome Back";
+      document.getElementById('auth-sub').innerText = isSignUp ? "Access your creative portal and service requests" : "Log in to track your deliverables";
+      document.getElementById('name-group').style.display = isSignUp ? "block" : "none";
+      document.getElementById('submit-btn').innerText = isSignUp ? "Sign Up" : "Sign In";
+      document.getElementById('toggle-auth').innerText = isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up";
+      clearMessage();
+    }
+
+    function showMessage(text, isError) {
+      const msg = document.getElementById('message');
+      msg.innerText = text;
+      msg.className = isError ? 'error' : 'success';
+    }
+
+    function clearMessage() {
+      const msg = document.getElementById('message');
+      msg.innerText = '';
+      msg.className = '';
+      msg.style.display = 'none';
+    }
+
+    // Check if user is already logged in
+    async function checkUser() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        showDashboard(session.user);
+      }
+    }
+
+    function showDashboard(user) {
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+      document.getElementById('user-display').innerText = `Logged in as: ${user.email}`;
+    }
+
+    async function signOut() {
+      await supabase.auth.signOut();
+      document.getElementById('dashboard-view').style.display = 'none';
+      document.getElementById('auth-view').style.display = 'block';
+      clearMessage();
+    }
+
+    // Handle authentication submission
+    document.getElementById('auth-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessage();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const fullName = document.getElementById('fullName').value.trim();
+
+      if (isSignUp) {
+        const { data, error } = await supabase.auth.signUp({
+          email: email,
+          password: password,
+          options: {
+            data: { full_name: fullName }
+          }
+        });
+
+        if (error) {
+          showMessage(error.message, true);
+        } else {
+          showMessage("Account registered! Check your email inbox to confirm or switch to Sign In.", false);
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: password
+        });
+
+        if (error) {
+          showMessage(error.message, true);
+        } else {
+          showDashboard(data.user);
+        }
+      }
+    });
+
+    checkUser();
+  </script>
 </body>
 </html>
+
+
 
