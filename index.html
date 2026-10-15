@@ -1695,36 +1695,17 @@
 
     async function confirmPlanSubscription() {
       if (!selectedCheckoutPlan) return;
-      if (!currentUser) {
+      if (!currentUser?.id) {
         closeCheckoutModal();
         navigateTo("login");
-        showAuthStatus("Please sign in or enter your email first to activate your yearly subscription.", false);
+        showAuthStatus("Please sign in before continuing with a plan.", false);
         return;
       }
 
-      const btn = document.getElementById("chk-confirm-btn");
-      btn.disabled = true;
-      btn.textContent = "Activating Yearly Plan...";
-
-      localStorage.setItem(`plafra_plan_${currentUser.email}`, selectedCheckoutPlan.id);
-
-      try {
-        await supabaseClient.from("subscriptions").insert([{
-          user_email: currentUser.email,
-          business_name: currentBusinessName || "PLAFRA Member Business",
-          plan_name: selectedCheckoutPlan.id,
-          amount: selectedCheckoutPlan.price,
-          status: "Active (1-Year Plan)"
-        }]);
-      } catch (err) {
-        console.warn("Subscription saved locally:", err);
-      }
-
-      btn.disabled = false;
-      btn.textContent = "Activate Yearly Plan (PhonePe / UPI Checkout)";
+      // Payment is currently handled manually with founder verification.
+      // Never grant a paid plan before the payment has been verified and approved.
+      showWelcomeToast("Manual UPI checkout is being prepared. Your plan has not been activated yet. Please contact PLAFRA to arrange payment.");
       closeCheckoutModal();
-      showWelcomeToast(`🎉 Your ${selectedCheckoutPlan.name} Plan (${selectedCheckoutPlan.priceFormatted}/year) is now active!`);
-      await refreshWorkspaceData();
       openPortalOrLogin("My Plan & Quota");
     }
 
