@@ -1960,7 +1960,7 @@
       const email = (currentUser?.email || "").toLowerCase();
       if (!currentUser) {
         activePortalRole = "customer";
-        navigateTo("auth");
+        navigateTo("login");
         return;
       }
       if (role === "founder" && email !== "plafra.official@gmail.com") {
