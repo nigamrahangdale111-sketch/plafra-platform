@@ -1742,12 +1742,12 @@
         console.warn("Session check notice:", e);
       }
 
-      const savedLocalUser = localStorage.getItem("plafra_workspace_user");
-      if (savedLocalUser) {
-        try {
-          setLoggedInUser(JSON.parse(savedLocalUser));
-        } catch (e) {}
-      }
+      // Never restore an identity from localStorage: only Supabase sessions are trusted.
+      localStorage.removeItem("plafra_workspace_user");
+      currentUser = null;
+      currentBusinessName = "";
+      const startBtn = document.getElementById("header-start-btn");
+      if (startBtn) startBtn.textContent = "Sign In";
     }
 
     function setLoggedInUser(userObj) {
@@ -1780,47 +1780,34 @@
 
       if (!email || !password) return;
       btn.disabled = true;
-      btn.textContent = "Connecting to PLAFRA Workspace...";
-
-      let authenticatedUser = null;
+      btn.textContent = "Signing in...";
 
       try {
-        const signInRes = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (signInRes.data && signInRes.data.user) {
-          authenticatedUser = signInRes.data.user;
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error || !data?.user || !data?.session) {
+          showAuthStatus("Sign-in failed. Check your email and password, or use Google sign-in if it is configured. No workspace was opened.", true);
+          return;
+        }
+
+        // Only a real Supabase-authenticated session may open the workspace.
+        localStorage.removeItem("plafra_workspace_user");
+        setLoggedInUser(data.user);
+
+        const existingBiz = localStorage.getItem(`plafra_biz_${email}`);
+        if (!existingBiz) {
+          document.getElementById("login-step-card").style.display = "none";
+          document.getElementById("registration-step-card").style.display = "block";
         } else {
-          const signUpRes = await supabaseClient.auth.signUp({ email, password });
-          if (signUpRes.data && signUpRes.data.user) {
-            authenticatedUser = signUpRes.data.user;
-          }
+          await refreshWorkspaceData();
+          navigateTo("dashboard");
+          renderDashboard();
         }
       } catch (err) {
-        console.warn("Using instant workspace session fallback:", err);
-      }
-
-      // Guaranteed fallback so login never blocks on email confirmation or OAuth setup
-      if (!authenticatedUser) {
-        authenticatedUser = {
-          id: "usr_" + btoa(email).replace(/=/g, "").slice(0, 12),
-          email: email,
-          user_metadata: {}
-        };
-      }
-
-      localStorage.setItem("plafra_workspace_user", JSON.stringify(authenticatedUser));
-      setLoggedInUser(authenticatedUser);
-
-      btn.disabled = false;
-      btn.textContent = "Access PLAFRA Workspace";
-
-      const existingBiz = localStorage.getItem(`plafra_biz_${email}`);
-      if (!existingBiz) {
-        document.getElementById("login-step-card").style.display = "none";
-        document.getElementById("registration-step-card").style.display = "block";
-      } else {
-        await refreshWorkspaceData();
-        navigateTo("dashboard");
-        renderDashboard();
+        console.error("PLAFRA sign-in failed:", err);
+        showAuthStatus("Unable to sign in securely right now. Please try again later.", true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Access PLAFRA Workspace";
       }
     }
 
@@ -1968,7 +1955,31 @@
     }
 
     function switchPortalRole(role) {
-      activePortalRole = role;
+      // Front-end role selection is not authorization. Founder access is limited
+      // to the configured founder email; employee access must be assigned securely.
+      const email = (currentUser?.email || "").toLowerCase();
+      if (!currentUser) {
+        activePortalRole = "customer";
+        navigateTo("auth");
+        return;
+      }
+      if (role === "founder" && email !== "plafra.official@gmail.com") {
+        activePortalRole = "customer";
+        const selector = document.getElementById("portal-role-selector");
+        if (selector) selector.value = "customer";
+        showWelcomeToast("Founder access is restricted to the authorized PLAFRA account.");
+        renderDashboard();
+        return;
+      }
+      if (role === "employee") {
+        activePortalRole = "customer";
+        const selector = document.getElementById("portal-role-selector");
+        if (selector) selector.value = "customer";
+        showWelcomeToast("Employee access must be assigned by PLAFRA before this portal can be opened.");
+        renderDashboard();
+        return;
+      }
+      activePortalRole = role === "founder" ? "founder" : "customer";
       activeSidebarSection = "Overview";
       renderDashboard();
     }
