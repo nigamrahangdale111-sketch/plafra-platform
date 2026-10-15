@@ -1835,9 +1835,8 @@
         if (error) throw error;
         currentBusinessName = bizInput;
         localStorage.setItem(`plafra_biz_${currentUser.email}`, bizInput);
-        if (!localStorage.getItem(`plafra_plan_${currentUser.email}`)) {
-          localStorage.setItem(`plafra_plan_${currentUser.email}`, "Newbie");
-        }
+        // Do not assign a plan in browser storage. Plan entitlement must come from a founder-approved database record.
+        localStorage.removeItem(`plafra_plan_${currentUser.email}`);
         document.getElementById("login-step-card").style.display = "block";
         document.getElementById("registration-step-card").style.display = "none";
         setLoggedInUser(currentUser);
