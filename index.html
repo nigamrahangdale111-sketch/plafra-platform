@@ -1887,63 +1887,52 @@
       const msg = document.getElementById("enq-msg").value.trim();
       const statusEl = document.getElementById("enq-status");
       const btn = document.getElementById("enq-submit-btn");
-
-      btn.disabled = true;
-      btn.textContent = "Submitting Enquiry...";
-
-      try {
-        await supabaseClient.from("creative_requests").insert([{
-          client_email: email,
-          business_name: biz || name,
-          title: `[Enquiry] ${cat}`,
-          service_type: cat,
-          description: msg,
-          status: "Pending Review"
-        }]);
-      } catch (e) {
-        console.warn("Enquiry logged:", e);
+      if (!name || !email || !msg) {
+        statusEl.style.display = "block"; statusEl.style.color = "#B91C1C";
+        statusEl.textContent = "Please complete your name, email, and message."; return;
       }
-
-      btn.disabled = false;
-      btn.textContent = "Send Enquiry";
-      statusEl.style.display = "block";
-      statusEl.style.color = "#059669";
-      statusEl.textContent = "✓ Thank you! Your enquiry has been received by PLAFRA. We will respond shortly.";
-      document.getElementById("enq-msg").value = "";
-      await refreshWorkspaceData();
+      btn.disabled = true; btn.textContent = "Submitting Enquiry...";
+      try {
+        const { error } = await supabaseClient.from("contact_enquiries").insert([{
+          name, business_name: biz || null, email, service_category: cat, message: msg
+        }]);
+        if (error) throw error;
+        statusEl.style.display = "block"; statusEl.style.color = "#059669";
+        statusEl.textContent = "✓ Thank you! Your enquiry has been received by PLAFRA. We will respond shortly.";
+        document.getElementById("enq-msg").value = "";
+      } catch (e) {
+        console.error("Contact enquiry failed:", e);
+        statusEl.style.display = "block"; statusEl.style.color = "#B91C1C";
+        statusEl.textContent = "We couldn't submit your enquiry right now. Please try again.";
+      } finally { btn.disabled = false; btn.textContent = "Send Enquiry"; }
     }
 
-    // =====================================================================
-    // DATABASE SYNC & THREE CONNECTED DASHBOARDS
-    // =====================================================================
+
+
     async function refreshWorkspaceData() {
+      if (!currentUser?.id) return;
+      const isFounder = (currentUser.email || "").toLowerCase() === "plafra.official@gmail.com";
       try {
-        const { data: reqData } = await supabaseClient
-          .from("creative_requests")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (Array.isArray(reqData)) cachedRequests = reqData;
-      } catch (e) {}
-
-      try {
-        const { data: subData } = await supabaseClient
-          .from("subscriptions")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (Array.isArray(subData)) cachedSubscriptions = subData;
-      } catch (e) {}
-
-      try {
-        const { data: payData } = await supabaseClient
-          .from("employee_payouts")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (Array.isArray(payData)) cachedPayouts = payData;
-      } catch (e) {}
-
+        let q = supabaseClient.from("creative_requests").select("*").order("created_at", { ascending: false });
+        if (!isFounder) q = q.eq("user_id", currentUser.id);
+        const { data, error } = await q;
+        if (error) throw error;
+        cachedRequests = Array.isArray(data) ? data : [];
+      } catch (e) { console.error("Could not load creative requests:", e); cachedRequests = []; }
+      // No subscriptions table exists in the current database schema.
+      cachedSubscriptions = [];
+      if (isFounder) {
+        try {
+          const { data, error } = await supabaseClient.from("employee_payouts").select("*").order("created_at", { ascending: false });
+          if (error) throw error;
+          cachedPayouts = Array.isArray(data) ? data : [];
+        } catch (e) { console.error("Could not load employee payouts:", e); cachedPayouts = []; }
+      } else { cachedPayouts = []; }
       await loadCustomServicesFromDB();
       updateLaunchSpotsCounter();
     }
+
+
 
     function updateLaunchSpotsCounter() {
       const claimed = Math.min(50, Math.max(6, cachedSubscriptions.length + 6));
@@ -2300,39 +2289,32 @@
 
     async function uploadFinishedDeliverable(reqId, idx) {
       const fileInput = document.getElementById(`emp-deliv-file-${idx}`);
-      const file = fileInput && fileInput.files ? fileInput.files[0] : null;
-
-      const finalizeUpdate = async (dataUrl, fileName) => {
-        const target = cachedRequests.find(r => String(r.id) === String(reqId));
-        if (target) {
-          target.status = "Completed";
-          target.deliverable_url = dataUrl;
-          target.deliverable_name = fileName;
-        }
-        try {
-          await supabaseClient
-            .from("creative_requests")
-            .update({
-              status: "Completed",
-              deliverable_url: dataUrl,
-              deliverable_name: fileName
-            })
-            .eq("id", reqId);
-        } catch (e) {
-          console.warn("Updated locally:", e);
-        }
-        showWelcomeToast(`✓ Deliverable "${fileName}" uploaded and marked Completed!`);
+      const file = fileInput?.files?.[0];
+      if (!file) { showWelcomeToast("Choose a real deliverable file before completing this request."); return; }
+      if (file.size > 8 * 1024 * 1024) { showWelcomeToast("This file is over 8 MB. Please choose a smaller file."); return; }
+      if ((currentUser?.email || "").toLowerCase() !== "plafra.official@gmail.com") {
+        showWelcomeToast("Only the authorized founder can complete a request at this stage."); return;
+      }
+      try {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader(); reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("File could not be read.")); reader.readAsDataURL(file);
+        });
+        const { data, error } = await supabaseClient.from("creative_requests").update({
+          status: "Completed", deliverable_url: dataUrl, deliverable_name: file.name
+        }).eq("id", reqId).select("id").maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("No request was updated.");
+        await refreshWorkspaceData();
+        showWelcomeToast(`✓ Deliverable "${file.name}" saved and request marked Completed.`);
         renderDashboard();
-      };
-
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => finalizeUpdate(e.target.result, file.name);
-        reader.readAsDataURL(file);
-      } else {
-        await finalizeUpdate("#completed-deliverable", "Completed-Studio-Asset.mp4");
+      } catch (e) {
+        console.error("Deliverable upload failed:", e);
+        showWelcomeToast("Upload failed. No success was recorded; please try again.");
       }
     }
+
+
 
     // ---------------------------------------------------------------------
     // 3. FOUNDER / ADMIN PORTAL WORKSPACE (SERVICES & EMPLOYEE PAYOUTS)
