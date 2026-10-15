@@ -1828,22 +1828,38 @@
 
     async function completeBusinessRegistration() {
       const bizInput = document.getElementById("reg-business-name").value.trim();
-      if (!bizInput || !currentUser) return;
-
-      currentBusinessName = bizInput;
-      localStorage.setItem(`plafra_biz_${currentUser.email}`, bizInput);
-      if (!localStorage.getItem(`plafra_plan_${currentUser.email}`)) {
-        localStorage.setItem(`plafra_plan_${currentUser.email}`, "Newbie");
+      if (!bizInput || !currentUser?.id || !currentUser?.email) {
+        showWelcomeToast("Please sign in and enter your business name first.");
+        return;
       }
-
-      document.getElementById("login-step-card").style.display = "block";
-      document.getElementById("registration-step-card").style.display = "none";
-
-      setLoggedInUser(currentUser);
-      showWelcomeToast(`Welcome to PLAFRA, ${bizInput}! Your Business Workspace is ready.`);
-      await refreshWorkspaceData();
-      navigateTo("dashboard");
-      renderDashboard();
+      const btn = document.getElementById("reg-complete-btn");
+      if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+      try {
+        const { error } = await supabaseClient.from("business_profiles").upsert({
+          user_id: currentUser.id,
+          email: currentUser.email,
+          business_name: bizInput,
+          role: "customer"
+        }, { onConflict: "user_id" });
+        if (error) throw error;
+        currentBusinessName = bizInput;
+        localStorage.setItem(`plafra_biz_${currentUser.email}`, bizInput);
+        if (!localStorage.getItem(`plafra_plan_${currentUser.email}`)) {
+          localStorage.setItem(`plafra_plan_${currentUser.email}`, "Newbie");
+        }
+        document.getElementById("login-step-card").style.display = "block";
+        document.getElementById("registration-step-card").style.display = "none";
+        setLoggedInUser(currentUser);
+        await refreshWorkspaceData();
+        navigateTo("dashboard");
+        renderDashboard();
+        showWelcomeToast(`Welcome to PLAFRA, ${bizInput}! Your Business Workspace is ready.`);
+      } catch (err) {
+        console.error("Business registration could not be saved:", err);
+        showWelcomeToast("We couldn't save your business profile. Please try again.");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Complete Registration"; }
+      }
     }
 
     function showWelcomeToast(message) {
@@ -2411,64 +2427,91 @@
       `;
     }
 
-    async function founderAddCustomService() {
+    async async function founderAddCustomService() {
+      if ((currentUser?.email || "").toLowerCase() !== "plafra.official@gmail.com") {
+        showWelcomeToast("Founder access is required to publish services.");
+        return;
+      }
       const name = document.getElementById("fnd-srv-name").value.trim();
       const price = document.getElementById("fnd-srv-price").value.trim();
       const desc = document.getElementById("fnd-srv-desc").value.trim();
-      if (!name || !price) return;
-
-      const newSrv = {
-        service_name: name,
-        category: "Custom Business Service",
-        price_label: price,
-        description: desc
-      };
-
-      cachedCustomServices.push(newSrv);
-      try {
-        await supabaseClient.from("custom_services").insert([newSrv]);
-      } catch (e) {
-        console.warn("Saved custom service locally:", e);
+      if (!name || !price || !desc) {
+        showWelcomeToast("Please complete all service fields.");
+        return;
       }
-
-      document.getElementById("fnd-srv-name").value = "";
-      document.getElementById("fnd-srv-price").value = "";
-      document.getElementById("fnd-srv-desc").value = "";
-      renderServices();
-      showWelcomeToast(`✓ "${name}" (${price}) is now live on the PLAFRA Services page!`);
-      renderDashboard();
+      const btn = document.querySelector('form[onsubmit*="founderAddCustomService"] button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = "Publishing…"; }
+      try {
+        const { data, error } = await supabaseClient.from("custom_services").insert([{
+          service_name: name,
+          category: "Custom Business Service",
+          price_label: price,
+          description: desc
+        }]).select("*").single();
+        if (error) throw error;
+        if (!data) throw new Error("The service was not returned by the database.");
+        await loadCustomServicesFromDB();
+        document.getElementById("fnd-srv-name").value = "";
+        document.getElementById("fnd-srv-price").value = "";
+        document.getElementById("fnd-srv-desc").value = "";
+        renderServices();
+        renderDashboard();
+        showWelcomeToast(`“${name}” (${price}) was published successfully.`);
+      } catch (err) {
+        console.error("Could not publish custom service:", err);
+        showWelcomeToast("The service wasn't saved. Check founder access and try again.");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Publish Service Live"; }
+      }
     }
 
+    
+
     async function founderRecordEmployeePayout() {
+      if ((currentUser?.email || "").toLowerCase() !== "plafra.official@gmail.com") {
+        showWelcomeToast("Founder access is required to record payouts.");
+        return;
+      }
       const empName = document.getElementById("pay-emp-name").value.trim();
       const role = document.getElementById("pay-emp-role").value.trim();
       const upi = document.getElementById("pay-emp-upi").value.trim();
       const amount = Number(document.getElementById("pay-emp-amount").value || 0);
       const month = document.getElementById("pay-emp-month").value.trim();
-      if (!empName || !amount) return;
-
-      const newPayout = {
-        employee_name: empName,
-        role_title: role,
-        upi_or_phone: upi,
-        amount_paid: amount,
-        payout_month: month,
-        status: "Paid via UPI"
-      };
-
-      cachedPayouts.unshift(newPayout);
-      try {
-        await supabaseClient.from("employee_payouts").insert([newPayout]);
-      } catch (e) {
-        console.warn("Saved payout locally:", e);
+      if (!empName || !role || !upi || !month || !Number.isFinite(amount) || amount <= 0) {
+        showWelcomeToast("Enter the employee details and a valid payout amount.");
+        return;
       }
-
-      document.getElementById("pay-emp-name").value = "";
-      document.getElementById("pay-emp-amount").value = "";
-      showWelcomeToast(`✓ Recorded ₹${amount.toLocaleString("en-IN")} payout for ${empName} (${month}).`);
-      renderDashboard();
+      const btn = document.querySelector('form[onsubmit*="founderRecordEmployeePayout"] button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+      try {
+        const { error } = await supabaseClient.from("employee_payouts").insert([{
+          employee_name: empName,
+          role_title: role,
+          upi_or_phone: upi,
+          amount_paid: amount,
+          payout_month: month,
+          status: "Paid via UPI"
+        }]);
+        if (error) throw error;
+        const { data, error: readError } = await supabaseClient.from("employee_payouts")
+          .select("*").order("created_at", { ascending: false });
+        if (readError) throw readError;
+        cachedPayouts = Array.isArray(data) ? data : [];
+        document.getElementById("pay-emp-name").value = "";
+        document.getElementById("pay-emp-amount").value = "";
+        showWelcomeToast(`Recorded ₹${amount.toLocaleString("en-IN")} payout for ${empName} (${month}).`);
+        renderDashboard();
+      } catch (err) {
+        console.error("Could not record employee payout:", err);
+        showWelcomeToast("The payout wasn't saved. Please check founder access and try again.");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "Record Payout"; }
+      }
     }
-  </script>
+
+    
+
+      </script>
 </body>
 </html>
 
