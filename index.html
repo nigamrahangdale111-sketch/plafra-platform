@@ -1981,6 +1981,19 @@
       const rightPanel = document.getElementById("dash-right-panel");
       if (!linksContainer || !central || !rightPanel) return;
 
+      // Recheck portal access on every render, not only in the role selector.
+      // Employee access stays closed until a trusted assignment model exists.
+      const authenticatedEmail = (currentUser?.email || "").toLowerCase();
+      if (!currentUser) {
+        activePortalRole = "customer";
+        navigateTo("login");
+        return;
+      }
+      if (activePortalRole === "founder" && authenticatedEmail !== "plafra.official@gmail.com") {
+        activePortalRole = "customer";
+      }
+      if (activePortalRole === "employee") activePortalRole = "customer";
+
       const items = PORTAL_SIDEBARS[activePortalRole] || PORTAL_SIDEBARS.customer;
       linksContainer.innerHTML = items.map(sec => `
         <button class="sidebar-item ${activeSidebarSection === sec ? 'active' : ''}" onclick="selectSidebarSection('${sec}')">
@@ -2007,7 +2020,7 @@
       // Browser storage is not proof of payment. Until founder approval is backed by a verified subscription record, no plan is treated as active.
       const hasVerifiedPlan = false;
 
-      const myRequests = cachedRequests.filter(r => !r.client_email || r.client_email === userEmail);
+      const myRequests = cachedRequests.filter(r => r.user_id === currentUser?.id);
       const usedAds = myRequests.filter(r => (r.deliverable_type || "").includes("Ad Video")).length;
       const usedTemplates = myRequests.filter(r => (r.deliverable_type || "").includes("Template")).length;
       const usedBanners = myRequests.filter(r => (r.deliverable_type || "").includes("Banner")).length;
