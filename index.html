@@ -1774,11 +1774,21 @@
         localStorage.removeItem("plafra_workspace_user");
         setLoggedInUser(data.user);
 
-        const existingBiz = localStorage.getItem(`plafra_biz_${email}`);
-        if (!existingBiz) {
+        // The database is the source of truth; localStorage alone must not
+        // decide whether registration exists on this device.
+        const { data: businessProfile, error: profileError } = await supabaseClient
+          .from("business_profiles")
+          .select("business_name, role")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+        if (profileError) throw profileError;
+
+        if (!businessProfile) {
           document.getElementById("login-step-card").style.display = "none";
           document.getElementById("registration-step-card").style.display = "block";
         } else {
+          currentBusinessName = businessProfile.business_name || "";
+          localStorage.setItem(`plafra_biz_${email}`, currentBusinessName);
           await refreshWorkspaceData();
           navigateTo("dashboard");
           renderDashboard();
