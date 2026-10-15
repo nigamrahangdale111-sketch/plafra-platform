@@ -2002,17 +2002,19 @@
     // ---------------------------------------------------------------------
     function renderCustomerWorkspace(central, rightPanel) {
       const userEmail = currentUser ? currentUser.email : "guest@plafra.com";
-      const planId = localStorage.getItem(`plafra_plan_${userEmail}`) || "Newbie";
-      const planObj = OFFICIAL_PLANS.find(p => p.id === planId) || OFFICIAL_PLANS[0];
+      const savedPlanId = localStorage.getItem(`plafra_plan_${userEmail}`);
+      const planObj = OFFICIAL_PLANS.find(p => p.id === savedPlanId) || OFFICIAL_PLANS[0];
+      // Browser storage is not proof of payment. Until founder approval is backed by a verified subscription record, no plan is treated as active.
+      const hasVerifiedPlan = false;
 
       const myRequests = cachedRequests.filter(r => !r.client_email || r.client_email === userEmail);
       const usedAds = myRequests.filter(r => (r.deliverable_type || "").includes("Ad Video")).length;
       const usedTemplates = myRequests.filter(r => (r.deliverable_type || "").includes("Template")).length;
       const usedBanners = myRequests.filter(r => (r.deliverable_type || "").includes("Banner")).length;
 
-      const remAds = Math.max(0, planObj.yearlyTotalEach - usedAds);
-      const remTemplates = Math.max(0, planObj.yearlyTotalEach - usedTemplates);
-      const remBanners = Math.max(0, planObj.yearlyTotalEach - usedBanners);
+      const remAds = hasVerifiedPlan ? Math.max(0, planObj.yearlyTotalEach - usedAds) : 0;
+      const remTemplates = hasVerifiedPlan ? Math.max(0, planObj.yearlyTotalEach - usedTemplates) : 0;
+      const remBanners = hasVerifiedPlan ? Math.max(0, planObj.yearlyTotalEach - usedBanners) : 0;
       const completedDeliverables = myRequests.filter(r => r.deliverable_url || r.status === "Completed");
 
       central.innerHTML = `
@@ -2032,24 +2034,24 @@
         <!-- Yearly Quota & Permanent Rollover Tracker -->
         <div class="stat-grid">
           <div class="stat-card">
-            <div class="stat-label">Active Yearly Plan</div>
-            <div class="stat-value" style="font-size:1.45rem;">${planObj.name} (${planObj.priceFormatted}/yr)</div>
-            <div style="font-size:0.75rem; font-weight:700; color:var(--blue-deep); margin-top:0.25rem;">${planObj.multiplier}-of-Everything Monthly</div>
+            <div class="stat-label">Subscription Status</div>
+            <div class="stat-value" style="font-size:1.25rem;">${hasVerifiedPlan ? `${planObj.name} (${planObj.priceFormatted}/yr)` : "No active plan"}</div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-top:0.25rem;">${hasVerifiedPlan ? `${planObj.multiplier}-of-Everything Monthly` : "Plan access starts after founder payment approval"}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Ad Videos Available (30s)</div>
-            <div class="stat-value">${remAds} <span style="font-size:0.9rem; color:var(--text-muted);">/ ${planObj.yearlyTotalEach} yr</span></div>
-            <div style="font-size:0.74rem; color:#059669; font-weight:700;">Unused monthly quota rolls over</div>
+            <div class="stat-value">${remAds}${hasVerifiedPlan ? ` <span style="font-size:0.9rem; color:var(--text-muted);">/ ${planObj.yearlyTotalEach} yr</span>` : ""}</div>
+            <div style="font-size:0.74rem; color:var(--text-muted); font-weight:700;">${hasVerifiedPlan ? "Unused monthly quota rolls over" : "Available after plan approval"}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Templates Available</div>
-            <div class="stat-value">${remTemplates} <span style="font-size:0.9rem; color:var(--text-muted);">/ ${planObj.yearlyTotalEach} yr</span></div>
-            <div style="font-size:0.74rem; color:#059669; font-weight:700;">Permanent till 1-yr plan ends</div>
+            <div class="stat-value">${remTemplates}${hasVerifiedPlan ? ` <span style="font-size:0.9rem; color:var(--text-muted);">/ ${planObj.yearlyTotalEach} yr</span>` : ""}</div>
+            <div style="font-size:0.74rem; color:var(--text-muted); font-weight:700;">${hasVerifiedPlan ? "Permanent till 1-yr plan ends" : "Available after plan approval"}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Banners Available</div>
-            <div class="stat-value">${remBanners} <span style="font-size:0.9rem; color:var(--text-muted);">/ ${planObj.yearlyTotalEach} yr</span></div>
-            <div style="font-size:0.74rem; color:#059669; font-weight:700;">Ready to request anytime</div>
+            <div class="stat-value">${remBanners}${hasVerifiedPlan ? ` <span style="font-size:0.9rem; color:var(--text-muted);">/ ${planObj.yearlyTotalEach} yr</span>` : ""}</div>
+            <div style="font-size:0.74rem; color:var(--text-muted); font-weight:700;">${hasVerifiedPlan ? "Ready to request anytime" : "Available after plan approval"}</div>
           </div>
         </div>
 
