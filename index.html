@@ -2213,7 +2213,7 @@
         user_id: currentUser.id,
         client_email: currentUser.email,
         business_name: currentBusinessName || "PLAFRA Client",
-        plan_tier: localStorage.getItem(`plafra_plan_${currentUser.email}`) || "Newbie",
+        plan_tier: "Unactivated", // Plan entitlement is assigned only after founder approval.
         request_category: category,
         deliverable_type: delivType,
         service_type: delivType,
