@@ -2427,7 +2427,7 @@
       `;
     }
 
-    async async function founderAddCustomService() {
+    async function founderAddCustomService() {
       if ((currentUser?.email || "").toLowerCase() !== "plafra.official@gmail.com") {
         showWelcomeToast("Founder access is required to publish services.");
         return;
