@@ -2172,45 +2172,52 @@
     }
 
     async function submitCustomerRequest() {
+      if (!currentUser?.id) {
+        showWelcomeToast("Please sign in before sending a creative request.");
+        navigateTo("login");
+        return;
+      }
       const catEl = document.getElementById("req-category");
       const category = catEl.value;
-      const extraCost = Number(catEl.options[catEl.selectedIndex].getAttribute("data-cost") || 0);
+      const extraCost = Number(catEl.options[catEl.selectedIndex]?.getAttribute("data-cost") || 0);
       const delivType = document.getElementById("req-deliverable-type").value;
       const title = document.getElementById("req-title").value.trim();
       const desc = document.getElementById("req-desc").value.trim();
-      const userEmail = currentUser ? currentUser.email : "guest@plafra.com";
-      const planId = localStorage.getItem(`plafra_plan_${userEmail}`) || "Newbie";
-
+      if (!title || !desc) {
+        showWelcomeToast("Please enter a project title and description.");
+        return;
+      }
       const newReq = {
-        id: "req_" + Date.now(),
-        client_email: userEmail,
+        user_id: currentUser.id,
+        client_email: currentUser.email,
         business_name: currentBusinessName || "PLAFRA Client",
-        plan_tier: planId,
+        plan_tier: localStorage.getItem(`plafra_plan_${currentUser.email}`) || "Newbie",
         request_category: category,
         deliverable_type: delivType,
         service_type: delivType,
-        title: title,
+        project_title: title,
         description: desc,
         extra_cost: extraCost,
         client_attachment_url: uploadedClientFileDataUrl || null,
         client_attachment_name: uploadedClientFileName || null,
-        status: "In Progress",
-        created_at: new Date().toISOString()
+        status: "Queued"
       };
-
-      cachedRequests.unshift(newReq);
-
       try {
-        await supabaseClient.from("creative_requests").insert([newReq]);
+        const { error } = await supabaseClient.from("creative_requests").insert([newReq]);
+        if (error) throw error;
+        uploadedClientFileDataUrl = "";
+        uploadedClientFileName = "";
+        const titleEl = document.getElementById("req-title");
+        const descEl = document.getElementById("req-desc");
+        if (titleEl) titleEl.value = "";
+        if (descEl) descEl.value = "";
+        showWelcomeToast("✓ Your creative request was saved and sent to PLAFRA.");
+        await refreshWorkspaceData();
+        renderDashboard();
       } catch (err) {
-        console.warn("Saved request in session:", err);
+        console.error("Creative request submission failed:", err);
+        showWelcomeToast("Your request could not be saved. Please try again; it has not been submitted.");
       }
-
-      uploadedClientFileDataUrl = "";
-      uploadedClientFileName = "";
-      showWelcomeToast("✓ Your creative request has been sent to the PLAFRA production studio!");
-      await refreshWorkspaceData();
-      renderDashboard();
     }
 
     // ---------------------------------------------------------------------
