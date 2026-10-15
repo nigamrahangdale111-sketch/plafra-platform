@@ -1473,16 +1473,28 @@
     // INITIALIZATION & SCROLL ANIMATIONS
     // =====================================================================
     window.addEventListener("DOMContentLoaded", async () => {
-      initScrollReveal();
-      renderPlans();
-      await loadCustomServicesFromDB();
-      renderServices();
-      showPolicyTab("privacy");
-      await checkCurrentSession();
-      await refreshWorkspaceData();
+      // Keep the public website usable even if an optional backend request fails.
+      // The homepage is the safe default; each section initializes independently.
+      navigateTo("home");
+      try { initScrollReveal(); } catch (e) { console.warn("Scroll effects unavailable:", e); }
+      try { renderPlans(); } catch (e) { console.error("Plans could not render:", e); }
+      try {
+        await loadCustomServicesFromDB();
+      } catch (e) {
+        console.warn("Custom services are temporarily unavailable:", e);
+      }
+      try { renderServices(); } catch (e) { console.error("Services could not render:", e); }
+      try { showPolicyTab("privacy"); } catch (e) { console.warn("Policy tabs unavailable:", e); }
+      try { await checkCurrentSession(); } catch (e) { console.warn("Session restoration failed safely:", e); }
+      try { await refreshWorkspaceData(); } catch (e) { console.warn("Workspace data could not refresh:", e); }
     });
 
     function initScrollReveal() {
+      // IntersectionObserver is an enhancement, not a dependency for page visibility.
+      if (!("IntersectionObserver" in window)) {
+        document.querySelectorAll(".reveal-on-scroll").forEach(el => el.classList.add("visible"));
+        return;
+      }
       const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
